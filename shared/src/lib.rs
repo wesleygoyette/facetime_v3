@@ -6,6 +6,7 @@ use tokio::{
 };
 
 pub const TCP_PORT: u16 = 8080;
+pub const UDP_PORT: u16 = 8081;
 pub const HELLO_FROM_CLIENT_BYTE: u8 = 69;
 pub const HELLO_FROM_SERVER_BYTE: u8 = 70;
 pub const USERNAME_ALREADY_TAKEN_BYTE: u8 = 71;
@@ -14,6 +15,8 @@ pub const REMOVE_USER_FROM_CLIENT_BYTE: u8 = 73;
 pub const REQUEST_CALL_BYTE: u8 = 74;
 pub const START_CALL_BYTE: u8 = 75;
 pub const DENY_CALL_BYTE: u8 = 76;
+pub const REQUEST_CALL_STREAM_ID_BYTE: u8 = 77;
+pub const SEND_CALL_STREAM_ID_BYTE: u8 = 78;
 
 pub async fn send_command_to_stream(
     cmd_byte: u8,
@@ -58,6 +61,7 @@ pub async fn receive_command_from_stream(
             | REQUEST_CALL_BYTE
             | START_CALL_BYTE
             | DENY_CALL_BYTE
+            | REQUEST_CALL_STREAM_ID_BYTE
     ) {
         let mut len_buf = [0u8; 1];
         stream.read_exact(&mut len_buf).await?;

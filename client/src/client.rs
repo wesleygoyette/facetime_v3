@@ -4,14 +4,12 @@ use crossterm::{
     terminal::{Clear, ClearType},
 };
 use shared::{
-    receive_command_from_stream, send_command_to_stream, ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, START_CALL_BYTE, USERNAME_ALREADY_TAKEN_BYTE
+    receive_command_from_stream, send_command_to_stream, ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, UDP_PORT, USERNAME_ALREADY_TAKEN_BYTE
 };
 use std::{
-    error::Error,
-    io::{Write, stdout},
-    sync::Arc,
+    error::Error, io::{stdout, Write}, str::from_utf8, sync::Arc, time::Duration
 };
-use tokio::{io::{AsyncBufReadExt}, net::TcpStream, sync::Mutex};
+use tokio::{io::{AsyncBufReadExt, AsyncReadExt}, net::{TcpStream, UdpSocket}, sync::Mutex, time::sleep};
 
 const PROMPT_STRING: &str = "> ";
 
@@ -60,6 +58,7 @@ impl Client {
 
         let available_users: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
         let requesting_call_recipient = Arc::new(Mutex::new(None));
+        let call_recipient = Arc::new(Mutex::new(None));
 
         print!("{}", PROMPT_STRING);
         stdout().flush()?;
@@ -121,7 +120,7 @@ impl Client {
                                 }
                                 "q" => {
                                     println!("Quitting...");
-                                    break;
+                                    return Ok(());
                                 }
                                 _ => {
                                     println!("Unknown command");
@@ -142,7 +141,7 @@ impl Client {
                     match result? {
                         Some((cmd, message)) => {
 
-                            match handle_command(cmd, message, available_users.clone(), &mut lines, requesting_call_recipient.clone(), &mut self.tcp_stream).await {
+                            match handle_command(cmd, message, available_users.clone(), &mut lines, requesting_call_recipient.clone(), call_recipient.clone(), &mut self.tcp_stream).await {
                                 Ok(Some(())) => continue,
                                 Ok(None) => break,
                                 Err(e) => {
@@ -155,13 +154,69 @@ impl Client {
                     }
                 }
             }
+        };
+
+        let call_recipient_guard = call_recipient.lock().await;
+
+        let call_recipient = call_recipient_guard
+            .as_ref()
+            .ok_or("call_recipient not found")?;
+
+        println!("Connecting to {}...", call_recipient);
+
+        send_command_to_stream(REQUEST_CALL_STREAM_ID_BYTE, Some(call_recipient.to_string()), &mut self.tcp_stream).await?;
+
+        let mut buf = [0; 5];
+
+        self.tcp_stream.read_exact(&mut buf).await?;
+
+        if buf[0] != SEND_CALL_STREAM_ID_BYTE {
+
+            return Err(format!("Invalid command {}", buf[0]).into());
         }
 
-        println!("Connecting...");
+        let sid: [u8; 4] = buf[1..5].try_into()?;
 
-        return Ok(());
+        let udp_socket= UdpSocket::bind("0.0.0.0:0").await?;
+
+        let mut count: u128 = 0;
+
+        let mut buf = [0; 4096];
+
+        loop { 
+
+            tokio::select! {
+
+                result = udp_socket.recv(&mut buf) => {
+
+                    let n = result?;
+
+                    let message = from_utf8(&buf[0..n])?;
+
+                    println!("{}", message);
+                }
+
+                _ = sleep(Duration::from_millis(10)) => {
+
+                    let message = format!("{} - {}", self.username, count);
+        
+                    let mut message_bytes = vec![];
+                    message_bytes.extend(&sid); 
+                    message_bytes.extend(message.as_bytes());
+                
+                    udp_socket
+                        .send_to(&message_bytes, format!("127.0.0.1:{}", UDP_PORT))
+                        .await?;
+
+                    count += 1;
+                }
+            }
+        }
+        
     }
 }
+
+
 
 async fn handle_command(
     cmd: u8,
@@ -169,6 +224,7 @@ async fn handle_command(
     available_users: Arc<Mutex<Vec<String>>>,
     lines: &mut tokio::io::Lines<tokio::io::BufReader<tokio::io::Stdin>>,
     requesting_call_recipient: Arc<Mutex<Option<String>>>,
+    call_recipient: Arc<Mutex<Option<String>>>,
     stream: &mut TcpStream,
 ) -> Result<Option<()>, Box<dyn Error + Send + Sync>> {
     match cmd {
@@ -179,7 +235,7 @@ async fn handle_command(
             None => {
                 return Err("Invalid data".into());
             }
-        }
+        },
         REMOVE_USER_FROM_CLIENT_BYTE => match message {
             Some(username) => {
                 available_users.lock().await.retain(|u| *u != username);
@@ -187,33 +243,34 @@ async fn handle_command(
             None => {
                 return Err("Invalid data".into());
             }
-        }
+        },
         REQUEST_CALL_BYTE => match message {
-
             Some(username) => {
                 println!("\nIncoming call from {}", username);
 
                 loop {
-
                     print!("Would you like to accept? (y/n): ");
                     stdout().flush()?;
 
                     if let Some(line) = lines.next_line().await? {
                         match line.trim().to_lowercase().as_str() {
                             "yes" | "y" => {
-                                
-                                send_command_to_stream(START_CALL_BYTE, Some(username), stream).await?;
-                                return Ok(None);
-                            },
-                            "no" | "n" => {
+                                send_command_to_stream(START_CALL_BYTE, Some(username.clone()), stream)
+                                    .await?;
 
-                                send_command_to_stream(DENY_CALL_BYTE, Some(username), stream).await?;
+                                *call_recipient.lock().await = Some(username);
+
+                                return Ok(None);
+                            }
+                            "no" | "n" => {
+                                send_command_to_stream(DENY_CALL_BYTE, Some(username), stream)
+                                    .await?;
                                 println!("You answered NO.");
 
                                 print!("{}", PROMPT_STRING);
                                 stdout().flush()?;
                                 break;
-                            },
+                            }
                             _ => println!("Invalid response."),
                         }
                     } else {
@@ -224,29 +281,31 @@ async fn handle_command(
             None => {
                 return Err("Invalid data".into());
             }
-        }
+        },
 
         DENY_CALL_BYTE => {
-
             if let Some(username) = message {
-
-                if let Some(requesting_call_recipient) = requesting_call_recipient.lock().await.take() {
-
+                if let Some(requesting_call_recipient) =
+                    requesting_call_recipient.lock().await.take()
+                {
                     if username == requesting_call_recipient {
-
                         println!("{} denied the call.", username);
                         print!("{}", PROMPT_STRING);
                         stdout().flush()?;
                     }
                 }
-            }
-            else {
+            } else {
                 return Err("Invalid data".into());
             }
         }
 
         START_CALL_BYTE => {
-
+            if let Some(username) = message {
+                
+                *call_recipient.lock().await = Some(username);
+            } else {
+                return Err("Invalid data".into());
+            }
             return Ok(None);
         }
 
