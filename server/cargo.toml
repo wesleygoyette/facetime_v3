@@ -1,0 +1,13 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "server"
+
+[dependencies]
+log = "0.4.27"
+env_logger = "0.11.8"
+shared = { path = "../shared" }
+tokio = { version = "1", features = ["full"] }
