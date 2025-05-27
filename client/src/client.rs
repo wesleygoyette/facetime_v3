@@ -4,12 +4,24 @@ use crossterm::{
     terminal::{Clear, ClearType},
 };
 use shared::{
-    receive_command_from_stream, send_command_to_stream, ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, UDP_PORT, USERNAME_ALREADY_TAKEN_BYTE
+    ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE,
+    REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, REQUEST_CALL_STREAM_ID_BYTE,
+    SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, UDP_PORT, USERNAME_ALREADY_TAKEN_BYTE,
+    receive_command_from_stream, send_command_to_stream,
 };
 use std::{
-    error::Error, io::{stdout, Write}, str::from_utf8, sync::Arc, time::Duration
+    error::Error,
+    io::{Write, stdout},
+    str::from_utf8,
+    sync::Arc,
+    time::Duration,
 };
-use tokio::{io::{AsyncBufReadExt, AsyncReadExt}, net::{TcpStream, UdpSocket}, sync::Mutex, time::sleep};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncReadExt},
+    net::{TcpStream, UdpSocket},
+    sync::Mutex,
+    time::sleep,
+};
 
 const PROMPT_STRING: &str = "> ";
 
@@ -154,7 +166,7 @@ impl Client {
                     }
                 }
             }
-        };
+        }
 
         let call_recipient_guard = call_recipient.lock().await;
 
@@ -164,27 +176,30 @@ impl Client {
 
         println!("Connecting to {}...", call_recipient);
 
-        send_command_to_stream(REQUEST_CALL_STREAM_ID_BYTE, Some(call_recipient.to_string()), &mut self.tcp_stream).await?;
+        send_command_to_stream(
+            REQUEST_CALL_STREAM_ID_BYTE,
+            Some(call_recipient.to_string()),
+            &mut self.tcp_stream,
+        )
+        .await?;
 
         let mut buf = [0; 5];
 
         self.tcp_stream.read_exact(&mut buf).await?;
 
         if buf[0] != SEND_CALL_STREAM_ID_BYTE {
-
             return Err(format!("Invalid command {}", buf[0]).into());
         }
 
         let sid: [u8; 4] = buf[1..5].try_into()?;
 
-        let udp_socket= UdpSocket::bind("0.0.0.0:0").await?;
+        let udp_socket = UdpSocket::bind("0.0.0.0:0").await?;
 
         let mut count: u128 = 0;
 
         let mut buf = [0; 4096];
 
-        loop { 
-
+        loop {
             tokio::select! {
 
                 result = udp_socket.recv(&mut buf) => {
@@ -199,11 +214,11 @@ impl Client {
                 _ = sleep(Duration::from_millis(10)) => {
 
                     let message = format!("{} - {}", self.username, count);
-        
+
                     let mut message_bytes = vec![];
-                    message_bytes.extend(&sid); 
+                    message_bytes.extend(&sid);
                     message_bytes.extend(message.as_bytes());
-                
+
                     udp_socket
                         .send_to(&message_bytes, format!("127.0.0.1:{}", UDP_PORT))
                         .await?;
@@ -212,11 +227,8 @@ impl Client {
                 }
             }
         }
-        
     }
 }
-
-
 
 async fn handle_command(
     cmd: u8,
@@ -255,8 +267,12 @@ async fn handle_command(
                     if let Some(line) = lines.next_line().await? {
                         match line.trim().to_lowercase().as_str() {
                             "yes" | "y" => {
-                                send_command_to_stream(START_CALL_BYTE, Some(username.clone()), stream)
-                                    .await?;
+                                send_command_to_stream(
+                                    START_CALL_BYTE,
+                                    Some(username.clone()),
+                                    stream,
+                                )
+                                .await?;
 
                                 *call_recipient.lock().await = Some(username);
 
@@ -301,7 +317,6 @@ async fn handle_command(
 
         START_CALL_BYTE => {
             if let Some(username) = message {
-                
                 *call_recipient.lock().await = Some(username);
             } else {
                 return Err("Invalid data".into());

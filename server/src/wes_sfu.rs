@@ -2,10 +2,15 @@ use std::{collections::HashMap, error::Error, sync::Arc};
 
 use log::{error, info};
 use shared::{
-    receive_command_from_stream, send_command_to_stream, ADD_USER_TO_CLIENT_BYTE, SEND_CALL_STREAM_ID_BYTE, DENY_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, REQUEST_CALL_STREAM_ID_BYTE, START_CALL_BYTE, USERNAME_ALREADY_TAKEN_BYTE
+    ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE,
+    REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, REQUEST_CALL_STREAM_ID_BYTE,
+    SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, USERNAME_ALREADY_TAKEN_BYTE,
+    receive_command_from_stream, send_command_to_stream,
 };
 use tokio::{
-    io::AsyncWriteExt, net::{TcpListener, TcpStream, UdpSocket}, sync::{broadcast, Mutex}
+    io::AsyncWriteExt,
+    net::{TcpListener, TcpStream, UdpSocket},
+    sync::{Mutex, broadcast},
 };
 
 #[derive(Debug)]
@@ -20,11 +25,14 @@ pub struct WeSFU {
 }
 
 impl WeSFU {
-    pub async fn new(tcp_addr: String, udp_addr: String) -> Result<WeSFU, Box<dyn Error + Send + Sync>> {
+    pub async fn new(
+        tcp_addr: String,
+        udp_addr: String,
+    ) -> Result<WeSFU, Box<dyn Error + Send + Sync>> {
         info!("WeSFU listening on {}", tcp_addr);
         Ok(Self {
             tcp_listener: TcpListener::bind(tcp_addr).await?,
-            udp_socket: UdpSocket::bind(udp_addr).await?
+            udp_socket: UdpSocket::bind(udp_addr).await?,
         })
     }
 
@@ -37,9 +45,7 @@ impl WeSFU {
         let active_calls_for_udp = active_calls.clone();
 
         tokio::spawn(async move {
-
             if let Err(e) = udp_loop(self.udp_socket, active_calls_for_udp).await {
-
                 error!("UDP Error: {}", e);
             }
         });
@@ -58,7 +64,7 @@ impl WeSFU {
                     &mut stream,
                     current_username.clone(),
                     username_to_tcp_command_channel.clone(),
-                    active_calls.clone()
+                    active_calls.clone(),
                 )
                 .await
                 {
@@ -84,7 +90,10 @@ impl WeSFU {
                         }
                     }
 
-                    active_calls.lock().await.retain(|call| !call.usernames_to_sids.contains_key(&current_username));
+                    active_calls
+                        .lock()
+                        .await
+                        .retain(|call| !call.usernames_to_sids.contains_key(&current_username));
 
                     info!("{} has disconnected!", current_username);
                 }
@@ -95,15 +104,15 @@ impl WeSFU {
     }
 }
 
-
-async fn udp_loop(udp_socket: UdpSocket, active_calls: Arc<Mutex<Vec<Call>>>) -> Result<(), Box<dyn Error + Send + Sync>> {
-
+async fn udp_loop(
+    udp_socket: UdpSocket,
+    active_calls: Arc<Mutex<Vec<Call>>>,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
     let mut sids_to_udp_addrs = HashMap::new();
 
     let mut buf = [0; 4096];
 
     loop {
-
         let (n, addr) = udp_socket.recv_from(&mut buf).await?;
 
         let sid: [u8; 4] = buf[0..4].try_into()?;
@@ -111,15 +120,12 @@ async fn udp_loop(udp_socket: UdpSocket, active_calls: Arc<Mutex<Vec<Call>>>) ->
 
         match sids_to_udp_addrs.get(&sid) {
             Some(_) => {
-
                 let mut other_sid = None;
 
                 let active_calls_guard = active_calls.lock().await;
 
                 for call in active_calls_guard.iter() {
-
                     if call.usernames_to_sids.values().any(|s| s == &sid) {
-
                         for other in call.usernames_to_sids.values() {
                             if other != &sid {
                                 other_sid = Some(*other);
@@ -131,20 +137,16 @@ async fn udp_loop(udp_socket: UdpSocket, active_calls: Arc<Mutex<Vec<Call>>>) ->
                 }
 
                 if let Some(other_sid) = other_sid {
-
                     if let Some(udp_addr) = sids_to_udp_addrs.get(&other_sid) {
-
                         udp_socket.send_to(message, udp_addr).await?;
                         info!("Forwarded UDP packet");
                     }
                 }
             }
             None => {
-
                 sids_to_udp_addrs.insert(sid, addr);
             }
         }
-
     }
 }
 
@@ -152,7 +154,7 @@ async fn handle_connection(
     stream: &mut TcpStream,
     current_username: Arc<Mutex<Option<String>>>,
     username_to_tcp_command_channel: Arc<Mutex<HashMap<String, broadcast::Sender<(u8, String)>>>>,
-    active_calls: Arc<Mutex<Vec<Call>>>
+    active_calls: Arc<Mutex<Vec<Call>>>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let (tcp_command_channel_tx, mut tcp_command_channel_rx) = broadcast::channel(16);
 
@@ -225,9 +227,9 @@ async fn handle_connection(
                                             usernames_to_sids.insert(username, [69, 69, 69, 69]);
 
                                             active_calls.lock().await.push(
-                                                Call { 
+                                                Call {
                                                     usernames_to_sids: usernames_to_sids,
-                                                    sids_requested: 0 
+                                                    sids_requested: 0
                                                 }
                                             )
                                         }
@@ -247,20 +249,20 @@ async fn handle_connection(
                                 if let Some(username) = message {
                                     let mut active_calls_guard = active_calls.lock().await;
                                     let mut found_call = None;
-                        
+
                                     for active_call in active_calls_guard.iter_mut() {
                                         if active_call.usernames_to_sids.contains_key(&current_name) {
                                             found_call = Some(active_call);
                                             break;
                                         }
                                     }
-                        
+
                                     match found_call {
                                         Some(call) => {
                                             if let Some(_) = call.usernames_to_sids.get(&username) {
                                                 call.sids_requested += 1;
                                                 if let Some(current_sid) = call.usernames_to_sids.get(&current_name) {
-                                                    
+
                                                     let mut message = vec![SEND_CALL_STREAM_ID_BYTE];
                                                     message.extend(current_sid);
 
@@ -268,11 +270,11 @@ async fn handle_connection(
                                                     stream.flush().await?;
 
                                                     info!("Sent sid");
-                                                } 
+                                                }
                                                 else {
                                                     return Err("Current user SID not found in call".into());
                                                 }
-                                            } 
+                                            }
                                             else {
                                                 return Err("Call does not exist".into());
                                             }
@@ -281,7 +283,7 @@ async fn handle_connection(
                                             return Err("Call does not exist".into());
                                         }
                                     }
-                                } 
+                                }
                                 else {
                                     return Err(format!("Missing username {}", cmd).into());
                                 }
