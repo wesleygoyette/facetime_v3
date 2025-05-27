@@ -15,8 +15,9 @@ pub const REMOVE_USER_FROM_CLIENT_BYTE: u8 = 73;
 pub const REQUEST_CALL_BYTE: u8 = 74;
 pub const START_CALL_BYTE: u8 = 75;
 pub const DENY_CALL_BYTE: u8 = 76;
-pub const REQUEST_CALL_STREAM_ID_BYTE: u8 = 77;
-pub const SEND_CALL_STREAM_ID_BYTE: u8 = 78;
+pub const END_CALL_BYTE: u8 = 77;
+pub const REQUEST_CALL_STREAM_ID_BYTE: u8 = 78;
+pub const SEND_CALL_STREAM_ID_BYTE: u8 = 79;
 
 pub async fn send_command_to_stream(
     cmd_byte: u8,

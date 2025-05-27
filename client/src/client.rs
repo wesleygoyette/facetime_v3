@@ -4,14 +4,11 @@ use crossterm::{
     terminal::{Clear, ClearType},
 };
 use shared::{
-    ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE,
-    REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, REQUEST_CALL_STREAM_ID_BYTE,
-    SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, UDP_PORT, USERNAME_ALREADY_TAKEN_BYTE,
-    receive_command_from_stream, send_command_to_stream,
+    receive_command_from_stream, send_command_to_stream, ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, END_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, UDP_PORT, USERNAME_ALREADY_TAKEN_BYTE
 };
 use std::{
     error::Error,
-    io::{Write, stdout},
+    io::{stdout, ErrorKind, Write},
     str::from_utf8,
     sync::Arc,
     time::Duration,
@@ -197,16 +194,32 @@ impl Client {
 
         let mut count: u128 = 0;
 
-        let mut buf = [0; 4096];
+        let mut tcp_buf = [0; 1];
+        let mut udp_buf = [0; 4096];
 
         loop {
             tokio::select! {
 
-                result = udp_socket.recv(&mut buf) => {
+                result = self.tcp_stream.read(&mut tcp_buf) => {
+
+                    match result {
+                        Ok(0) => break,
+                        Ok(_) => {
+                            match tcp_buf[0] {
+                                END_CALL_BYTE => break,
+                                _ => continue
+                            }
+                        },
+                        Err(e) if e.kind() == ErrorKind::WouldBlock => continue,
+                        Err(e) => return Err(e.into()),
+                    }
+                }
+
+                result = udp_socket.recv(&mut udp_buf) => {
 
                     let n = result?;
 
-                    let message = from_utf8(&buf[0..n])?;
+                    let message = from_utf8(&udp_buf[0..n])?;
 
                     println!("{}", message);
                 }
@@ -227,6 +240,8 @@ impl Client {
                 }
             }
         }
+
+        return Ok(());
     }
 }
 

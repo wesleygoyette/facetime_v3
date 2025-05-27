@@ -2,10 +2,7 @@ use std::{collections::HashMap, error::Error, sync::Arc};
 
 use log::{error, info};
 use shared::{
-    ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE,
-    REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, REQUEST_CALL_STREAM_ID_BYTE,
-    SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, USERNAME_ALREADY_TAKEN_BYTE,
-    receive_command_from_stream, send_command_to_stream,
+    receive_command_from_stream, send_command_to_stream, ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, END_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, USERNAME_ALREADY_TAKEN_BYTE
 };
 use tokio::{
     io::AsyncWriteExt,
@@ -38,7 +35,7 @@ impl WeSFU {
 
     pub async fn run(self) -> Result<(), Box<dyn Error + Send + Sync>> {
         let username_to_tcp_command_channel: Arc<
-            Mutex<HashMap<String, broadcast::Sender<(u8, String)>>>,
+            Mutex<HashMap<String, broadcast::Sender<(u8, Option<String>)>>>,
         > = Arc::new(Mutex::new(HashMap::new()));
 
         let active_calls: Arc<Mutex<Vec<Call>>> = Arc::new(Mutex::new(Vec::new()));
@@ -81,12 +78,31 @@ impl WeSFU {
                         username_to_tcp_command_channel.lock().await.iter()
                     {
                         if let Err(e) = tcp_command_channel
-                            .send((REMOVE_USER_FROM_CLIENT_BYTE, current_username.clone()))
+                            .send((REMOVE_USER_FROM_CLIENT_BYTE, Some(current_username.clone())))
                         {
                             error!(
                                 "Error removing {} from {}: {}",
                                 current_username, username, e
                             );
+                        }
+                    }
+
+                    for call in active_calls.lock().await.iter() {
+
+                        if !call.usernames_to_sids.contains_key(&current_username) {
+
+                            continue;
+                        }
+
+                        for username in call.usernames_to_sids.keys() {
+
+                            if let Some(tx) = username_to_tcp_command_channel.lock().await.get(username) {
+
+                                if let Err(e) = tx.send((END_CALL_BYTE, None)) {
+
+                                    error!("Errors end call: {}", e);
+                                }
+                            }
                         }
                     }
 
@@ -139,7 +155,6 @@ async fn udp_loop(
                 if let Some(other_sid) = other_sid {
                     if let Some(udp_addr) = sids_to_udp_addrs.get(&other_sid) {
                         udp_socket.send_to(message, udp_addr).await?;
-                        info!("Forwarded UDP packet");
                     }
                 }
             }
@@ -153,7 +168,7 @@ async fn udp_loop(
 async fn handle_connection(
     stream: &mut TcpStream,
     current_username: Arc<Mutex<Option<String>>>,
-    username_to_tcp_command_channel: Arc<Mutex<HashMap<String, broadcast::Sender<(u8, String)>>>>,
+    username_to_tcp_command_channel: Arc<Mutex<HashMap<String, broadcast::Sender<(u8, Option<String>)>>>>,
     active_calls: Arc<Mutex<Vec<Call>>>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let (tcp_command_channel_tx, mut tcp_command_channel_rx) = broadcast::channel(16);
@@ -167,7 +182,7 @@ async fn handle_connection(
 
                 let (cmd_byte, subject) = result?;
 
-                send_command_to_stream(cmd_byte, Some(subject), stream).await?;
+                send_command_to_stream(cmd_byte, subject, stream).await?;
             }
 
             result = receive_command_from_stream(stream) => {
@@ -189,7 +204,12 @@ async fn handle_connection(
                                             continue;
                                         }
 
-                                        tcp_command_channel.send((ADD_USER_TO_CLIENT_BYTE, username.clone()))?;
+                                        if active_calls.lock().await.iter().any(|x| x.usernames_to_sids.contains_key(user)) {
+
+                                            continue;
+                                        }
+
+                                        tcp_command_channel.send((ADD_USER_TO_CLIENT_BYTE, Some(username.clone())))?;
 
                                         send_command_to_stream(
                                             ADD_USER_TO_CLIENT_BYTE,
@@ -215,24 +235,37 @@ async fn handle_connection(
                             if let Some(current_name) = current_username.lock().await.clone() {
                                 if let Some(username) = message {
 
-                                    if let Some(tx) = username_to_tcp_command_channel.lock().await.get(&username) {
+                                    let username_to_tcp_command_channel_guard = username_to_tcp_command_channel.lock().await;
 
-                                        tx.send((cmd, current_name.clone()))?;
+                                    if let Some(tx) = username_to_tcp_command_channel_guard.get(&username) {
 
                                         if cmd == START_CALL_BYTE {
 
                                             let mut usernames_to_sids = HashMap::new();
 
-                                            usernames_to_sids.insert(current_name, [0, 4, 2, 0]);
-                                            usernames_to_sids.insert(username, [69, 69, 69, 69]);
+                                            usernames_to_sids.insert(current_name.clone(), rand::random());
+                                            usernames_to_sids.insert(username.clone(), rand::random());
 
                                             active_calls.lock().await.push(
                                                 Call {
                                                     usernames_to_sids: usernames_to_sids,
                                                     sids_requested: 0
                                                 }
-                                            )
+                                            );
+
+                                            for (user, tx) in username_to_tcp_command_channel_guard.iter() {
+
+                                                if *user == current_name || *user == username {
+
+                                                    continue;
+                                                }
+
+                                                tx.send((REMOVE_USER_FROM_CLIENT_BYTE, Some(current_name.clone())))?;
+                                                tx.send((REMOVE_USER_FROM_CLIENT_BYTE, Some(username.clone())))?;
+                                            }
                                         }
+
+                                        tx.send((cmd, Some(current_name.clone())))?;
                                     }
                                     else {
                                         return Err("Invalid username".into());
