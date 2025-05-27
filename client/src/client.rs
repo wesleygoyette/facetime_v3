@@ -202,7 +202,7 @@ impl Client {
         let udp_socket = UdpSocket::bind("0.0.0.0:0").await?;
 
         let mut tcp_buf = [0; 1];
-        let mut udp_buf = [0; 4096];
+        let mut udp_buf = [0; 4840];
 
         let mut cam = VideoCapture::new(0, CAP_ANY)?;
 
@@ -241,6 +241,9 @@ impl Client {
                     let n = result?;
 
                     let message = from_utf8(&udp_buf[0..n])?;
+
+                    execute!(stdout(), Clear(ClearType::All), MoveTo(0, 0))?;
+                    stdout().flush()?;
 
                     println!("{}", message);
                 }

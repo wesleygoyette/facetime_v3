@@ -95,6 +95,10 @@ impl WeSFU {
                             continue;
                         }
 
+                        let call_names: Vec<&String> = call.usernames_to_sids.keys().collect();
+
+                        info!("Call ended between {} and {}", call_names[0], call_names[1]);
+
                         for username in call.usernames_to_sids.keys() {
                             if let Some(tx) =
                                 username_to_tcp_command_channel.lock().await.get(username)
@@ -126,7 +130,7 @@ async fn udp_loop(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let mut sids_to_udp_addrs = HashMap::new();
 
-    let mut buf = [0; 4096];
+    let mut buf = [0; 4844];
 
     loop {
         let (n, addr) = udp_socket.recv_from(&mut buf).await?;
@@ -265,6 +269,8 @@ async fn handle_connection(
                                                 tx.send((REMOVE_USER_FROM_CLIENT_BYTE, Some(current_name.clone())))?;
                                                 tx.send((REMOVE_USER_FROM_CLIENT_BYTE, Some(username.clone())))?;
                                             }
+
+                                            info!("Call started between {} and {}", current_name, username);
                                         }
 
                                         tx.send((cmd, Some(current_name.clone())))?;
@@ -303,8 +309,6 @@ async fn handle_connection(
 
                                                     stream.write_all(&message).await?;
                                                     stream.flush().await?;
-
-                                                    info!("Sent sid");
                                                 }
                                                 else {
                                                     return Err("Current user SID not found in call".into());
