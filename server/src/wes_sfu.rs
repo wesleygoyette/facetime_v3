@@ -2,7 +2,10 @@ use std::{collections::HashMap, error::Error, sync::Arc};
 
 use log::{error, info};
 use shared::{
-    receive_command_from_stream, send_command_to_stream, ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, END_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, USERNAME_ALREADY_TAKEN_BYTE
+    ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, END_CALL_BYTE, HELLO_FROM_CLIENT_BYTE,
+    HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE,
+    REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE,
+    USERNAME_ALREADY_TAKEN_BYTE, receive_command_from_stream, send_command_to_stream,
 };
 use tokio::{
     io::AsyncWriteExt,
@@ -88,18 +91,15 @@ impl WeSFU {
                     }
 
                     for call in active_calls.lock().await.iter() {
-
                         if !call.usernames_to_sids.contains_key(&current_username) {
-
                             continue;
                         }
 
                         for username in call.usernames_to_sids.keys() {
-
-                            if let Some(tx) = username_to_tcp_command_channel.lock().await.get(username) {
-
+                            if let Some(tx) =
+                                username_to_tcp_command_channel.lock().await.get(username)
+                            {
                                 if let Err(e) = tx.send((END_CALL_BYTE, None)) {
-
                                     error!("Errors end call: {}", e);
                                 }
                             }
@@ -168,7 +168,9 @@ async fn udp_loop(
 async fn handle_connection(
     stream: &mut TcpStream,
     current_username: Arc<Mutex<Option<String>>>,
-    username_to_tcp_command_channel: Arc<Mutex<HashMap<String, broadcast::Sender<(u8, Option<String>)>>>>,
+    username_to_tcp_command_channel: Arc<
+        Mutex<HashMap<String, broadcast::Sender<(u8, Option<String>)>>>,
+    >,
     active_calls: Arc<Mutex<Vec<Call>>>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let (tcp_command_channel_tx, mut tcp_command_channel_rx) = broadcast::channel(16);

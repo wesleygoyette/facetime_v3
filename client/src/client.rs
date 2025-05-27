@@ -4,11 +4,14 @@ use crossterm::{
     terminal::{Clear, ClearType},
 };
 use shared::{
-    receive_command_from_stream, send_command_to_stream, ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, END_CALL_BYTE, HELLO_FROM_CLIENT_BYTE, HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE, REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, UDP_PORT, USERNAME_ALREADY_TAKEN_BYTE
+    ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, END_CALL_BYTE, HELLO_FROM_CLIENT_BYTE,
+    HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE,
+    REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, UDP_PORT,
+    USERNAME_ALREADY_TAKEN_BYTE, receive_command_from_stream, send_command_to_stream,
 };
 use std::{
     error::Error,
-    io::{stdout, ErrorKind, Write},
+    io::{ErrorKind, Write, stdout},
     str::from_utf8,
     sync::Arc,
     time::Duration,
@@ -20,13 +23,19 @@ use tokio::{
     time::sleep,
 };
 
+use crate::ascii_converter::AsciiConverter;
+use opencv::{
+    core::Mat,
+    prelude::*,
+    videoio::{CAP_ANY, VideoCapture},
+};
+
 const PROMPT_STRING: &str = "> ";
 
 pub struct Client {
     tcp_stream: TcpStream,
     username: String,
 }
-
 impl Client {
     pub async fn new(
         addr: String,
@@ -192,10 +201,22 @@ impl Client {
 
         let udp_socket = UdpSocket::bind("0.0.0.0:0").await?;
 
-        let mut count: u128 = 0;
-
         let mut tcp_buf = [0; 1];
         let mut udp_buf = [0; 4096];
+
+        let mut cam = VideoCapture::new(0, CAP_ANY)?;
+
+        if !cam.is_opened()? {
+            eprintln!("Error: Could not open camera");
+            return Ok(());
+        }
+
+        let ascii_converter = AsciiConverter::new(120, 40);
+
+        println!("Starting camera ASCII feed... Press Ctrl+C to exit");
+        println!("Camera initialized successfully!");
+
+        let mut frame = Mat::default();
 
         loop {
             tokio::select! {
@@ -226,7 +247,14 @@ impl Client {
 
                 _ = sleep(Duration::from_millis(10)) => {
 
-                    let message = format!("{} - {}", self.username, count);
+                    cam.read(&mut frame)?;
+
+                    if frame.empty() {
+                        eprintln!("Warning: Empty frame captured");
+                        continue;
+                    }
+
+                    let message = ascii_converter.frame_to_ascii(&frame)?;
 
                     let mut message_bytes = vec![];
                     message_bytes.extend(&sid);
@@ -236,7 +264,6 @@ impl Client {
                         .send_to(&message_bytes, format!("127.0.0.1:{}", UDP_PORT))
                         .await?;
 
-                    count += 1;
                 }
             }
         }

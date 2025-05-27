@@ -4,6 +4,7 @@ use clap::Parser;
 use client::Client;
 use shared::TCP_PORT;
 
+mod ascii_converter;
 mod client;
 
 #[derive(Parser, Debug)]

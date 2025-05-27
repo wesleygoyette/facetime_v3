@@ -12,3 +12,4 @@ tokio = { version = "1", features = ["full"] }
 clap = { version = "4.5.38", features = ["derive"] }
 crossterm = "0.29.0"
 rand = "0.9.1"
+opencv = "0.94.4"
