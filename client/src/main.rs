@@ -15,6 +15,9 @@ mod client;
 struct Args {
     #[arg(short, long)]
     username: Option<String>,
+
+    #[arg(short, long, default_value = "127.0.0.1")]
+    server_address: String,
 }
 
 #[tokio::main]
@@ -22,7 +25,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let args = Args::parse();
     let username = get_username(args.username).await?;
 
-    let addr = format!("127.0.0.1:{}", TCP_PORT);
+    let addr = format!("{}:{}", args.server_address, TCP_PORT);
     let mut client = Client::new(addr, username).await?;
     client.run().await?;
 
