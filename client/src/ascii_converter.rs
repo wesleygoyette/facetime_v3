@@ -4,7 +4,7 @@ use opencv::{
     prelude::*,
 };
 
-const ASCII_CHARS: &[char] = &['@', '#', 'S', '%', '?', '*', '+', ';', ':', ',', '.', ' '];
+const ASCII_CHARS: &[char] = &[' ', '.', ',', ':', ';', '+', '*', '?', '%', 'S', '#', '@'];
 
 pub struct AsciiConverter {
     width: i32,
@@ -34,7 +34,7 @@ impl AsciiConverter {
 
         for y in 0..self.height {
             for x in 0..self.width {
-                let pixel_value = *resized.at_2d::<u8>(y, x)?;
+                let pixel_value = *resized.at_2d::<u8>(y, self.width - 1 - x)?;
                 let ascii_index = (pixel_value as usize * (ASCII_CHARS.len() - 1)) / 255;
                 ascii_art.push(ASCII_CHARS[ascii_index]);
             }
