@@ -1,0 +1,15 @@
+app = "facetime-v3"
+primary_region = "den"
+
+[build]
+dockerfile = "Dockerfile"
+
+[deploy]
+strategy = "rolling"
+
+[[services]]
+protocol = "tcp"
+internal_port = 8080
+
+[[services.ports]]
+port = 8080

@@ -4,7 +4,7 @@ use log::{error, info};
 use shared::{
     ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, END_CALL_BYTE, HELLO_FROM_CLIENT_BYTE,
     HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE,
-    REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE,
+    REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, TCP_PORT, UDP_PORT,
     USERNAME_ALREADY_TAKEN_BYTE, receive_command_from_stream, send_command_to_stream,
 };
 use tokio::{
@@ -29,7 +29,7 @@ impl WeSFU {
         tcp_addr: String,
         udp_addr: String,
     ) -> Result<WeSFU, Box<dyn Error + Send + Sync>> {
-        info!("WeSFU listening on {}", tcp_addr);
+        info!("WeSFU listening on tcp: {}, udp: {}", TCP_PORT, UDP_PORT);
         Ok(Self {
             tcp_listener: TcpListener::bind(tcp_addr).await?,
             udp_socket: UdpSocket::bind(udp_addr).await?,

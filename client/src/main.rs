@@ -1,7 +1,10 @@
-use std::{error::Error, io::{stdout, Write}};
 use clap::Parser;
 use client::Client;
 use shared::TCP_PORT;
+use std::{
+    error::Error,
+    io::{Write, stdout},
+};
 use tokio::io::{self, AsyncBufReadExt};
 
 // use ascii_converter::AsciiConverter;
@@ -16,7 +19,7 @@ struct Args {
     #[arg(short, long)]
     username: Option<String>,
 
-    #[arg(short, long, default_value = "127.0.0.1")]
+    #[arg(short, long, default_value = "facetime-v3.fly.dev")]
     server_address: String,
 }
 
@@ -63,7 +66,9 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     // }
 }
 
-async fn get_username(cli_username: Option<String>) -> Result<String, Box<dyn Error + Send + Sync>> {
+async fn get_username(
+    cli_username: Option<String>,
+) -> Result<String, Box<dyn Error + Send + Sync>> {
     if let Some(name) = cli_username {
         return Ok(name);
     }
