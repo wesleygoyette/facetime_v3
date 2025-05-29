@@ -13,3 +13,10 @@ internal_port = 8080
 
 [[services.ports]]
 port = 8080
+
+[[services]]
+protocol = "udp"
+internal_port = 8081
+
+[[services.ports]]
+port = 8081
