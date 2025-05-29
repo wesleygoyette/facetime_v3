@@ -6,7 +6,7 @@ use crossterm::{
 use shared::{
     ADD_USER_TO_CLIENT_BYTE, DENY_CALL_BYTE, END_CALL_BYTE, HELLO_FROM_CLIENT_BYTE,
     HELLO_FROM_SERVER_BYTE, REMOVE_USER_FROM_CLIENT_BYTE, REQUEST_CALL_BYTE,
-    REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE, UDP_PORT,
+    REQUEST_CALL_STREAM_ID_BYTE, SEND_CALL_STREAM_ID_BYTE, START_CALL_BYTE,
     USERNAME_ALREADY_TAKEN_BYTE, receive_command_from_stream, send_command_to_stream,
 };
 use std::{
@@ -35,15 +35,18 @@ const PROMPT_STRING: &str = "> ";
 pub struct Client {
     tcp_stream: TcpStream,
     username: String,
+    server_udp_addr: String,
 }
 impl Client {
     pub async fn new(
-        addr: String,
+        tcp_addr: String,
+        udp_addr: String,
         username: String,
     ) -> Result<Client, Box<dyn Error + Send + Sync>> {
         Ok(Self {
-            tcp_stream: TcpStream::connect(addr).await?,
+            tcp_stream: TcpStream::connect(tcp_addr).await?,
             username: username,
+            server_udp_addr: udp_addr
         })
     }
 
@@ -264,7 +267,7 @@ impl Client {
                     message_bytes.extend(message.as_bytes());
 
                     udp_socket
-                        .send_to(&message_bytes, format!("facetime-v3.fly.dev:{}", UDP_PORT))
+                        .send_to(&message_bytes, self.server_udp_addr.clone())
                         .await?;
 
                 }

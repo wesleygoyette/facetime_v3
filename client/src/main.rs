@@ -1,6 +1,6 @@
 use clap::Parser;
 use client::Client;
-use shared::TCP_PORT;
+use shared::{TCP_PORT, UDP_PORT};
 use std::{
     error::Error,
     io::{Write, stdout},
@@ -19,7 +19,7 @@ struct Args {
     #[arg(short, long)]
     username: Option<String>,
 
-    #[arg(short, long, default_value = "137.66.7.29")]
+    #[arg(short, long, default_value = "facetime-v3.fly.dev")]
     server_address: String,
 }
 
@@ -28,8 +28,10 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let args = Args::parse();
     let username = get_username(args.username).await?;
 
-    let addr = format!("{}:{}", args.server_address, TCP_PORT);
-    let mut client = Client::new(addr, username).await?;
+    let tcp_addr = format!("{}:{}", args.server_address, TCP_PORT);
+    let udp_addr = format!("{}:{}", args.server_address, UDP_PORT);
+
+    let mut client = Client::new(tcp_addr, udp_addr, username).await?;
     client.run().await?;
 
     return Ok(());
