@@ -211,7 +211,7 @@ impl Client {
             return Ok(());
         }
 
-        let ascii_converter = AsciiConverter::new(30, 30);
+        let ascii_converter = AsciiConverter::new(52, 22);
 
         println!("Starting camera ASCII feed... Press Ctrl+C to exit");
         println!("Camera initialized successfully!");
@@ -264,7 +264,7 @@ impl Client {
                     message_bytes.extend(message.as_bytes());
 
                     udp_socket
-                        .send_to(&message_bytes, format!("127.0.0.1:{}", UDP_PORT))
+                        .send_to(&message_bytes, format!("facetime-v3.fly.dev:{}", UDP_PORT))
                         .await?;
 
                 }
