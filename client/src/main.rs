@@ -19,7 +19,7 @@ struct Args {
     #[arg(short, long)]
     username: Option<String>,
 
-    #[arg(short, long, default_value = "50.31.246.162")]
+    #[arg(short, long, default_value = "137.66.7.29")]
     server_address: String,
 }
 

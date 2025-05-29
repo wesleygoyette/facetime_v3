@@ -1,22 +1,27 @@
-app = "facetime-v3"
-primary_region = "den"
+app = 'facetime-v3'
+primary_region = 'den'
 
 [build]
-dockerfile = "Dockerfile"
+dockerfile = 'Dockerfile'
 
 [deploy]
-strategy = "rolling"
+strategy = 'rolling'
 
 [[services]]
+protocol = 'udp'
 internal_port = 8081
-protocol = "udp"
 
 [[services.ports]]
-port = "8081"
+port = 8081
 
 [[services]]
+protocol = 'tcp'
 internal_port = 8080
-protocol = "tcp"
 
 [[services.ports]]
-port = "8080"
+port = 8080
+
+[[vm]]
+memory = '1gb'
+cpu_kind = 'shared'
+cpus = 1

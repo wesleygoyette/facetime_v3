@@ -211,7 +211,7 @@ impl Client {
             return Ok(());
         }
 
-        let ascii_converter = AsciiConverter::new(120, 40);
+        let ascii_converter = AsciiConverter::new(30, 30);
 
         println!("Starting camera ASCII feed... Press Ctrl+C to exit");
         println!("Camera initialized successfully!");
