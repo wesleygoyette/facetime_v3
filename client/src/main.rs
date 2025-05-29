@@ -19,7 +19,7 @@ struct Args {
     #[arg(short, long)]
     username: Option<String>,
 
-    #[arg(short, long, default_value = "facetime-v3.fly.dev")]
+    #[arg(short, long, default_value = "50.31.246.162")]
     server_address: String,
 }
 
