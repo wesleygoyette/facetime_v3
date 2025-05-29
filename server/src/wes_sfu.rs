@@ -135,6 +135,8 @@ async fn udp_loop(
     loop {
         let (n, addr) = udp_socket.recv_from(&mut buf).await?;
 
+        info!("UDP: Recevied {} bytes from {}", n, addr);
+
         let sid: [u8; 4] = buf[0..4].try_into()?;
         let message = &buf[4..n];
 
