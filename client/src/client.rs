@@ -46,7 +46,7 @@ impl Client {
         Ok(Self {
             tcp_stream: TcpStream::connect(tcp_addr).await?,
             username: username,
-            server_udp_addr: udp_addr
+            server_udp_addr: udp_addr,
         })
     }
 
@@ -221,6 +221,8 @@ impl Client {
 
         let mut frame = Mat::default();
 
+        let user_camera_frame_string = Arc::new(Mutex::new(None));
+
         loop {
             tokio::select! {
 
@@ -243,12 +245,20 @@ impl Client {
 
                     let n = result?;
 
-                    let message = from_utf8(&udp_buf[0..n])?;
+                    let other_user_camera_frame_str = from_utf8(&udp_buf[0..n])?;
 
                     execute!(stdout(), Clear(ClearType::All), MoveTo(0, 0))?;
                     stdout().flush()?;
 
-                    println!("{}", message);
+                    if let Some(user_camera_frame_str) = user_camera_frame_string.lock().await.take() {
+
+                        println!("{}", AsciiConverter::merge_ascii_frames_side_by_side(other_user_camera_frame_str.to_string(), user_camera_frame_str));
+                        
+                    }
+                    else {
+
+                        println!("{}", other_user_camera_frame_str);
+                    }
                 }
 
                 _ = sleep(Duration::from_millis(10)) => {
@@ -261,6 +271,8 @@ impl Client {
                     }
 
                     let message = ascii_converter.frame_to_ascii(&frame)?;
+
+                    *user_camera_frame_string.lock().await = Some(message.clone());
 
                     let mut message_bytes = vec![];
                     message_bytes.extend(&sid);

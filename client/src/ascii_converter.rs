@@ -1,3 +1,4 @@
+use clap::builder::Str;
 use opencv::{
     core::{AlgorithmHint, Mat, Size},
     imgproc::{COLOR_BGR2GRAY, INTER_LINEAR, cvt_color, resize},
@@ -42,5 +43,24 @@ impl AsciiConverter {
         }
 
         Ok(ascii_art)
+    }
+
+    pub fn merge_ascii_frames_side_by_side(frame1: String, frame2: String) -> String {
+        let lines1: Vec<&str> = frame1.lines().collect();
+        let lines2: Vec<&str> = frame2.lines().collect();
+    
+        let max_lines = lines1.len().max(lines2.len());
+        let mut merged = String::new();
+    
+        for i in 0..max_lines {
+            let line1 = lines1.get(i).copied().unwrap_or("");
+            let line2 = lines2.get(i).copied().unwrap_or("");
+            merged.push_str(line1);
+            merged.push(' '); // optional separator
+            merged.push_str(line2);
+            merged.push('\n');
+        }
+    
+        merged
     }
 }
