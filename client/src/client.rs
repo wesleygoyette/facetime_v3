@@ -270,7 +270,7 @@ impl Client {
                     }
                 }
 
-                _ = sleep(Duration::from_millis(10)) => {
+                _ = sleep(Duration::from_millis(3)) => {
 
                     cam.read(&mut frame)?;
 
