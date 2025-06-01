@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-echo "Checking for Rust..."
 if ! command -v cargo &> /dev/null; then
   echo "Rust is not installed. Installing via rustup..."
   curl https://sh.rustup.rs -sSf | sh -s -- -y
@@ -11,7 +10,6 @@ else
   echo "Rust found."
 fi
 
-echo "Checking for Homebrew..."
 if ! command -v brew &> /dev/null; then
   echo "Homebrew is not installed. Installing Homebrew..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
