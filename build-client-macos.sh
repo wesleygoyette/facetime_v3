@@ -2,10 +2,28 @@
 
 set -euo pipefail
 
+echo "Checking for Rust..."
+if ! command -v cargo &> /dev/null; then
+  echo "Rust is not installed. Installing via rustup..."
+  curl https://sh.rustup.rs -sSf | sh -s -- -y
+  source "$HOME/.cargo/env"
+else
+  echo "Rust is installed."
+fi
+
 echo "Checking for Homebrew..."
 if ! command -v brew &> /dev/null; then
-  echo "Error: Homebrew is not installed. Please install it first." >&2
-  exit 1
+  echo "Homebrew is not installed. Installing Homebrew..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  echo "Homebrew installation complete."
+  # Make sure brew is in PATH
+  if [[ -d "/opt/homebrew/bin" ]]; then
+    export PATH="/opt/homebrew/bin:$PATH"
+  elif [[ -d "/usr/local/bin" ]]; then
+    export PATH="/usr/local/bin:$PATH"
+  fi
+else
+  echo "Homebrew is installed."
 fi
 
 if ! brew list llvm &> /dev/null; then
