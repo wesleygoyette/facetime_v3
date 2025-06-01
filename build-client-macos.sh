@@ -39,3 +39,5 @@ echo "Environment configured."
 echo "Building the client in release mode..."
 cargo build --bin client --release
 echo "Build complete."
+echo "You can now run the client with:"
+echo "./target/release/client"
