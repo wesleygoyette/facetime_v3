@@ -1,4 +1,3 @@
-use clap::builder::Str;
 use opencv::{
     core::{AlgorithmHint, Mat, Size},
     imgproc::{COLOR_BGR2GRAY, INTER_LINEAR, cvt_color, resize},
