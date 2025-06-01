@@ -1,18 +1,25 @@
-# ASCII FaceTime
+# ASCII Webcam Video Streaming
 
-A lightweight video chat app that turns webcam streams into ASCII art and sends them over the network. It uses a TCP/UDP SFU (Selective Forwarding Unit) server to connect users in real time—essentially FaceTime, but in terminal-friendly ASCII.
+A lightweight ASCII-based video chat system using a TCP and UDP SFU (Selective Forwarding Unit) server. Users can connect and video call each other with webcam streams rendered in ASCII.
 
-## Features
+## 🛠 Build Instructions (macOS)
 
-- ASCII video streaming from webcam
-- Peer-to-peer connection via TCP/UDP SFU server
-- Simple CLI-based interface
-- Built in Rust with OpenCV and LLVM bindings
+1. Clone the repository and navigate to the client folder:
 
-## Build Instructions (macOS)
+   ```bash
+   cd path/to/project/client
+````
 
-To build the client on macOS, run:
+2. Run the macOS build script:
+
+   ```bash
+   ./build-client-macos.sh
+   ```
+
+## 🚀 Run the Client
+
+After building, start the client with:
 
 ```bash
-./build-client-macos.sh
+./target/release/client
 ```
