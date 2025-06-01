@@ -31,8 +31,8 @@ use opencv::{
 
 const PROMPT_STRING: &str = "> ";
 
-const WIDTH: i32 = 75;
-const HEIGHT: i32 = 30;
+const WIDTH: i32 = 90;
+const HEIGHT: i32 = 28;
 
 pub struct Client {
     tcp_stream: TcpStream,
