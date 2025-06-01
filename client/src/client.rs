@@ -31,11 +31,15 @@ use opencv::{
 
 const PROMPT_STRING: &str = "> ";
 
+const WIDTH: i32 = 75;
+const HEIGHT: i32 = 30;
+
 pub struct Client {
     tcp_stream: TcpStream,
     username: String,
     server_udp_addr: String,
     auto_accept_calls: bool,
+    border: bool,
 }
 impl Client {
     pub async fn new(
@@ -43,12 +47,14 @@ impl Client {
         udp_addr: String,
         username: String,
         auto_accept_calls: bool,
+        border: bool,
     ) -> Result<Client, Box<dyn Error + Send + Sync>> {
         Ok(Self {
             tcp_stream: TcpStream::connect(tcp_addr).await?,
             username,
             server_udp_addr: udp_addr,
             auto_accept_calls,
+            border,
         })
     }
 
@@ -216,7 +222,7 @@ impl Client {
             return Ok(None);
         }
 
-        let ascii_converter = AsciiConverter::new(75, 30);
+        let ascii_converter = AsciiConverter::new(WIDTH, HEIGHT);
 
         println!("Starting camera ASCII feed... Press Ctrl+C to exit");
         println!("Camera initialized successfully!");
@@ -256,7 +262,7 @@ impl Client {
 
                     if let Some(user_camera_frame_str) = (*user_camera_frame_string_guard).clone() {
 
-                        println!("{}", AsciiConverter::merge_ascii_frames_side_by_side(other_user_camera_frame_str.to_string(), user_camera_frame_str));
+                        println!("{}", ascii_converter.merge_ascii_frames_side_by_side(other_user_camera_frame_str.to_string(), user_camera_frame_str, self.border));
                     }
                     else {
 

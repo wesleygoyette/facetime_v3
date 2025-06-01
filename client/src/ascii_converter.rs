@@ -90,20 +90,57 @@ impl AsciiConverter {
         ascii
     }
 
-    pub fn merge_ascii_frames_side_by_side(frame1: String, frame2: String) -> String {
+    pub fn merge_ascii_frames_side_by_side(
+        &self,
+        frame1: String,
+        frame2: String,
+        border: bool,
+    ) -> String {
         let lines1: Vec<&str> = frame1.lines().collect();
         let lines2: Vec<&str> = frame2.lines().collect();
 
         let max_lines = lines1.len().max(lines2.len());
+
+        let width1 = lines1.iter().map(|l| l.len()).max().unwrap_or(0);
+        let width2 = lines2.iter().map(|l| l.len()).max().unwrap_or(0);
+
         let mut merged = String::new();
+
+        if border {
+            // Top border
+            merged.push('+');
+            merged.push_str(&"-".repeat(width1));
+            merged.push('+');
+            merged.push_str(&"-".repeat(width2));
+            merged.push('+');
+            merged.push('\n');
+        }
 
         for i in 0..max_lines {
             let line1 = lines1.get(i).copied().unwrap_or("");
             let line2 = lines2.get(i).copied().unwrap_or("");
-            merged.push_str(line1);
-            merged.push(' ');
-            merged.push_str(line2);
+
+            if border {
+                merged.push('|');
+                merged.push_str(&format!("{:<width$}", line1, width = width1));
+                merged.push('|');
+                merged.push_str(&format!("{:<width$}", line2, width = width2));
+                merged.push('|');
+            } else {
+                merged.push_str(&format!("{:<width$}", line1, width = width1));
+                merged.push(' ');
+                merged.push_str(&format!("{:<width$}", line2, width = width2));
+            }
             merged.push('\n');
+        }
+
+        if border {
+            // Bottom border
+            merged.push('+');
+            merged.push_str(&"-".repeat(width1));
+            merged.push('+');
+            merged.push_str(&"-".repeat(width2));
+            merged.push('+');
         }
 
         merged
