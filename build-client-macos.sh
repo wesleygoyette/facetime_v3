@@ -16,11 +16,14 @@ if ! command -v brew &> /dev/null; then
   echo "Homebrew is not installed. Installing Homebrew..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   echo "Homebrew installation complete."
-  # Make sure brew is in PATH
   if [[ -d "/opt/homebrew/bin" ]]; then
     export PATH="/opt/homebrew/bin:$PATH"
   elif [[ -d "/usr/local/bin" ]]; then
     export PATH="/usr/local/bin:$PATH"
+  fi
+  if ! command -v brew &> /dev/null; then
+    echo "Error: Homebrew still not found in PATH after installation." >&2
+    exit 1
   fi
 else
   echo "Homebrew is installed."
