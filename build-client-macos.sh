@@ -8,7 +8,7 @@ if ! command -v cargo &> /dev/null; then
   curl https://sh.rustup.rs -sSf | sh -s -- -y
   source "$HOME/.cargo/env"
 else
-  echo "Rust is installed."
+  echo "Rust found."
 fi
 
 echo "Checking for Homebrew..."
@@ -26,7 +26,7 @@ if ! command -v brew &> /dev/null; then
     exit 1
   fi
 else
-  echo "Homebrew is installed."
+  echo "Homebrew found."
 fi
 
 if ! brew list llvm &> /dev/null; then
