@@ -278,8 +278,6 @@ impl Client {
                     message_bytes.extend(&sid);
                     message_bytes.extend(AsciiConverter::ascii_frame_to_bytes(message.clone()));
 
-                    println!("Sending ASCII frame of {} chars ({} bytes)", message.len(), message_bytes.len());
-
                     udp_socket
                         .send_to(&message_bytes, self.server_udp_addr.clone())
                         .await?;
