@@ -7,10 +7,6 @@ use std::{
 };
 use tokio::io::{self, AsyncBufReadExt};
 
-// use ascii_converter::AsciiConverter;
-// use crossterm::{cursor::MoveTo, execute, terminal::ClearType, terminal::Clear};
-// use opencv::{core::{Mat, MatTraitConst}, videoio::{VideoCapture, VideoCaptureTrait, VideoCaptureTraitConst, CAP_ANY}};
-
 mod ascii_converter;
 mod client;
 
@@ -26,46 +22,21 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let args = Args::parse();
-    let username = get_username(args.username).await?;
 
-    let tcp_addr = format!("{}:{}", args.server_address, TCP_PORT);
-    let udp_addr = format!("{}:{}", args.server_address, UDP_PORT);
+    loop {
+        let username = get_username(args.username.clone()).await?;
 
-    let mut client = Client::new(tcp_addr, udp_addr, username).await?;
-    client.run().await?;
+        let tcp_addr = format!("{}:{}", args.server_address, TCP_PORT);
+        let udp_addr = format!("{}:{}", args.server_address, UDP_PORT);
+
+        let mut client = Client::new(tcp_addr, udp_addr, username).await?;
+        match client.run().await? {
+            Some(()) => continue,
+            None => break,
+        }
+    }
 
     return Ok(());
-
-    // let mut cam = VideoCapture::new(0, CAP_ANY)?;
-
-    // if !cam.is_opened()? {
-    //     eprintln!("Error: Could not open camera");
-    //     return Ok(());
-    // }
-
-    // let ascii_converter = AsciiConverter::new(120, 40);
-
-    // println!("Starting camera ASCII feed... Press Ctrl+C to exit");
-    // println!("Camera initialized successfully!");
-
-    // let mut frame = Mat::default();
-
-    // loop {
-
-    //     cam.read(&mut frame)?;
-
-    //     if frame.empty() {
-    //         eprintln!("Warning: Empty frame captured");
-    //         continue;
-    //     }
-
-    //     let message = ascii_converter.frame_to_ascii(&frame)?;
-
-    //     execute!(stdout(), Clear(ClearType::All), MoveTo(0, 0))?;
-    //     stdout().flush()?;
-    //     print!("{}", message);
-    //     stdout().flush()?;
-    // }
 }
 
 async fn get_username(

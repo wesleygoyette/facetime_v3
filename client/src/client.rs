@@ -11,7 +11,7 @@ use shared::{
 };
 use std::{
     error::Error,
-    io::{stdout, ErrorKind, Write},
+    io::{ErrorKind, Write, stdout},
     sync::Arc,
     time::Duration,
 };
@@ -49,7 +49,7 @@ impl Client {
         })
     }
 
-    pub async fn run(&mut self) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub async fn run(&mut self) -> Result<Option<()>, Box<dyn Error + Send + Sync>> {
         send_command_to_stream(
             HELLO_FROM_CLIENT_BYTE,
             Some(self.username.clone()),
@@ -64,13 +64,13 @@ impl Client {
                 }
                 USERNAME_ALREADY_TAKEN_BYTE => {
                     println!("Username {} already taken!", self.username);
-                    return Ok(());
+                    return Ok(None);
                 }
                 x => {
                     return Err(format!("Invalid Response from server: {}", x).into());
                 }
             },
-            None => return Ok(()),
+            None => return Ok(None),
         }
 
         let raw_stdin = tokio::io::stdin();
@@ -140,7 +140,7 @@ impl Client {
                                 }
                                 "q" => {
                                     println!("Quitting...");
-                                    return Ok(());
+                                    return Ok(None);
                                 }
                                 _ => {
                                     println!("Unknown command");
@@ -170,7 +170,7 @@ impl Client {
                                 }
                             }
                         },
-                        None => return Ok(()),
+                        None => return Ok(None),
                     }
                 }
             }
@@ -210,7 +210,7 @@ impl Client {
 
         if !cam.is_opened()? {
             eprintln!("Error: Could not open camera");
-            return Ok(());
+            return Ok(None);
         }
 
         let ascii_converter = AsciiConverter::new(75, 30);
@@ -286,7 +286,7 @@ impl Client {
             }
         }
 
-        return Ok(());
+        return Ok(Some(()));
     }
 }
 
