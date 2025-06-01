@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use client::Client;
 use shared::{TCP_PORT, UDP_PORT};
 use std::{
@@ -17,6 +17,9 @@ struct Args {
 
     #[arg(short, long, default_value = "facetime-v3.fly.dev")]
     server_address: String,
+
+    #[arg(short, long, action = ArgAction::SetTrue)]
+    auto_accept_calls: bool,
 }
 
 #[tokio::main]
@@ -29,7 +32,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         let tcp_addr = format!("{}:{}", args.server_address, TCP_PORT);
         let udp_addr = format!("{}:{}", args.server_address, UDP_PORT);
 
-        let mut client = Client::new(tcp_addr, udp_addr, username).await?;
+        let mut client = Client::new(tcp_addr, udp_addr, username, args.auto_accept_calls).await?;
         match client.run().await? {
             Some(()) => continue,
             None => break,

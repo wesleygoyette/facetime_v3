@@ -35,17 +35,20 @@ pub struct Client {
     tcp_stream: TcpStream,
     username: String,
     server_udp_addr: String,
+    auto_accept_calls: bool,
 }
 impl Client {
     pub async fn new(
         tcp_addr: String,
         udp_addr: String,
         username: String,
+        auto_accept_calls: bool,
     ) -> Result<Client, Box<dyn Error + Send + Sync>> {
         Ok(Self {
             tcp_stream: TcpStream::connect(tcp_addr).await?,
-            username: username,
+            username,
             server_udp_addr: udp_addr,
+            auto_accept_calls,
         })
     }
 
@@ -161,7 +164,7 @@ impl Client {
                     match result? {
                         Some((cmd, message)) => {
 
-                            match handle_command(cmd, message, available_users.clone(), &mut lines, requesting_call_recipient.clone(), call_recipient.clone(), &mut self.tcp_stream).await {
+                            match handle_command(cmd, message, available_users.clone(), &mut lines, requesting_call_recipient.clone(), call_recipient.clone(), self.auto_accept_calls, &mut self.tcp_stream).await {
                                 Ok(Some(())) => continue,
                                 Ok(None) => break,
                                 Err(e) => {
@@ -297,6 +300,7 @@ async fn handle_command(
     lines: &mut tokio::io::Lines<tokio::io::BufReader<tokio::io::Stdin>>,
     requesting_call_recipient: Arc<Mutex<Option<String>>>,
     call_recipient: Arc<Mutex<Option<String>>>,
+    auto_accept_calls: bool,
     stream: &mut TcpStream,
 ) -> Result<Option<()>, Box<dyn Error + Send + Sync>> {
     match cmd {
@@ -319,6 +323,14 @@ async fn handle_command(
         REQUEST_CALL_BYTE => match message {
             Some(username) => {
                 println!("\nIncoming call from {}", username);
+
+                if auto_accept_calls {
+                    send_command_to_stream(START_CALL_BYTE, Some(username.clone()), stream).await?;
+
+                    *call_recipient.lock().await = Some(username);
+
+                    return Ok(None);
+                }
 
                 loop {
                     print!("Would you like to accept? (y/n): ");

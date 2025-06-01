@@ -47,18 +47,17 @@ impl AsciiConverter {
     }
 
     pub fn ascii_frame_to_bytes(ascii: String) -> Vec<u8> {
-
         let mut all_chars = ASCII_CHARS.to_vec();
         all_chars.push('\n');
-    
+
         let char_to_code: HashMap<char, u8> = all_chars
             .iter()
             .enumerate()
             .map(|(i, &ch)| (ch, i as u8))
             .collect();
-    
+
         let mut bytes = Vec::with_capacity((ascii.len() + 1) / 2);
-    
+
         let mut chars = ascii.chars();
         while let Some(ch1) = chars.next() {
             let code1 = *char_to_code.get(&ch1).unwrap_or(&0) & 0x0F;
@@ -66,28 +65,28 @@ impl AsciiConverter {
             let code2 = ch2
                 .map(|c| *char_to_code.get(&c).unwrap_or(&0) & 0x0F)
                 .unwrap_or(0);
-    
+
             let byte = (code1 << 4) | code2;
             bytes.push(byte);
         }
-    
+
         bytes
     }
 
     pub fn bytes_to_ascii_frame(bytes: &[u8]) -> String {
         let mut all_chars = ASCII_CHARS.to_vec();
         all_chars.push('\n');
-    
+
         let mut ascii = String::with_capacity(bytes.len() * 2);
-    
+
         for &byte in bytes {
             let high_nibble = (byte >> 4) & 0x0F;
             let low_nibble = byte & 0x0F;
-    
+
             ascii.push(all_chars.get(high_nibble as usize).copied().unwrap_or(' '));
             ascii.push(all_chars.get(low_nibble as usize).copied().unwrap_or(' '));
         }
-    
+
         ascii
     }
 
