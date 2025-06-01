@@ -250,10 +250,11 @@ impl Client {
                     execute!(stdout(), Clear(ClearType::All), MoveTo(0, 0))?;
                     stdout().flush()?;
 
-                    if let Some(user_camera_frame_str) = user_camera_frame_string.lock().await.take() {
+                    let user_camera_frame_string_guard = user_camera_frame_string.lock().await;
+
+                    if let Some(user_camera_frame_str) = (*user_camera_frame_string_guard).clone() {
 
                         println!("{}", AsciiConverter::merge_ascii_frames_side_by_side(other_user_camera_frame_str.to_string(), user_camera_frame_str));
-
                     }
                     else {
 
