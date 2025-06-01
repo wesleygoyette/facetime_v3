@@ -1,4 +1,4 @@
-# ASCII Webcam
+# ASCII FaceTime
 
 A lightweight video chat app that turns webcam streams into ASCII art and sends them over the network. It uses a TCP/UDP SFU (Selective Forwarding Unit) server to connect users in real time—essentially FaceTime, but in terminal-friendly ASCII.
 
