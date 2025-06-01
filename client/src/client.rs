@@ -253,7 +253,7 @@ impl Client {
                     if let Some(user_camera_frame_str) = user_camera_frame_string.lock().await.take() {
 
                         println!("{}", AsciiConverter::merge_ascii_frames_side_by_side(other_user_camera_frame_str.to_string(), user_camera_frame_str));
-                        
+
                     }
                     else {
 
