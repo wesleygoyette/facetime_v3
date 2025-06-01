@@ -11,8 +11,7 @@ use shared::{
 };
 use std::{
     error::Error,
-    io::{ErrorKind, Write, stdout},
-    str::from_utf8,
+    io::{stdout, ErrorKind, Write},
     sync::Arc,
     time::Duration,
 };
@@ -214,7 +213,7 @@ impl Client {
             return Ok(());
         }
 
-        let ascii_converter = AsciiConverter::new(52, 22);
+        let ascii_converter = AsciiConverter::new(75, 30);
 
         println!("Starting camera ASCII feed... Press Ctrl+C to exit");
         println!("Camera initialized successfully!");
@@ -245,7 +244,7 @@ impl Client {
 
                     let n = result?;
 
-                    let other_user_camera_frame_str = from_utf8(&udp_buf[0..n])?;
+                    let other_user_camera_frame_str = AsciiConverter::bytes_to_ascii_frame(&udp_buf[0..n]);
 
                     execute!(stdout(), Clear(ClearType::All), MoveTo(0, 0))?;
                     stdout().flush()?;
@@ -277,7 +276,9 @@ impl Client {
 
                     let mut message_bytes = vec![];
                     message_bytes.extend(&sid);
-                    message_bytes.extend(message.as_bytes());
+                    message_bytes.extend(AsciiConverter::ascii_frame_to_bytes(message.clone()));
+
+                    println!("Sending ASCII frame of {} chars ({} bytes)", message.len(), message_bytes.len());
 
                     udp_socket
                         .send_to(&message_bytes, self.server_udp_addr.clone())
